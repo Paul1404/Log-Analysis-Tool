@@ -1,4 +1,4 @@
-function Get-Last10SystemEvents {
+function Get-LastSystemEvents {
     <#
     .SYNOPSIS
        Retrieves the last 10 system events, saves them to an XML file, and displays them in a grid view.
