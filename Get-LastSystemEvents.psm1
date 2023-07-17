@@ -8,16 +8,54 @@ function Get-LastSystemEvents {
        Specifies the event log name from which the events will be retrieved.
     .PARAMETER MaxEvents
        Specifies the maximum number of events to retrieve.
+    .PARAMETER Level
+       Specifies the level of the events to retrieve.
+    .PARAMETER After
+       Specifies the start of the date range for the events to retrieve.
+    .PARAMETER Before
+       Specifies the end of the date range for the events to retrieve.
     .EXAMPLE
-       Get-LastSystemEvents -LogName System -MaxEvents 10
+       Get-LastSystemEvents -LogName System -MaxEvents 10 -Level Error -After (Get-Date).AddDays(-7)
     #>
     param (
         [string]$LogName = "System",
-        [int]$MaxEvents = 10
+        [int]$MaxEvents = 10,
+        [ValidateSet('Critical', 'Error', 'Warning', 'Information', 'Verbose')][string]$Level,
+        [DateTime]$After,
+        [DateTime]$Before
     )
 
+    # Build a hash table for the Get-WinEvent parameters
+    $winEventParams = @{
+        'LogName' = $LogName
+        'MaxEvents' = $MaxEvents
+    }
+
+    # Level mapping
+    $levelMap = @{
+        'Critical'    = 1
+        'Error'       = 2
+        'Warning'     = 3
+        'Information' = 4
+        'Verbose'     = 5
+    }
+
+    # Create an XPath filter string for Get-WinEvent
+    $xpathFilter = "*"
+    if ($PSBoundParameters.ContainsKey('Level')) {
+        $xpathFilter += "[System/Level=$($levelMap[$Level])]"
+    }
+    if ($PSBoundParameters.ContainsKey('After')) {
+        $xpathFilter += "[System/TimeCreated[@SystemTime>='$($After.ToUniversalTime().ToString('o'))']]"
+    }
+    if ($PSBoundParameters.ContainsKey('Before')) {
+        $xpathFilter += "[System/TimeCreated[@SystemTime<='$($Before.ToUniversalTime().ToString('o'))']]"
+    }
+
+    $winEventParams['FilterXPath'] = $xpathFilter
+
     # Get the system events
-    $events = Get-WinEvent -LogName $LogName -MaxEvents $MaxEvents
+    $events = Get-WinEvent @winEventParams
 
     # Create an ArrayList to hold the event data
     $eventData = New-Object System.Collections.ArrayList
